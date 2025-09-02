@@ -16,6 +16,7 @@ except ImportError:
     import pyperclip
     import keyboard
 
+VERSION = "1.1"
 
 dot_art = r'''
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⣴⡶⠶⠶⢶⣦⣤⡀⠀⠀⠀
@@ -41,7 +42,6 @@ dot_art = r'''
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠫⠽⠇⠀⠈⠉⠙⠁
 '''
 
-
 settings_dot_art = r'''
 ⠀⠀⠀⠀⠀⠀⢴⣶⣶⣶⣶⣶⣲⠒⢲⡞⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⣤⣿⣷⣟⣿⣿⣿⣿⣿⠿⠧⣄⠀⠀⠀
@@ -54,17 +54,51 @@ settings_dot_art = r'''
 ⠀⡄⠀⠀⢛⣿⠻⠇⢀⠀⠀⠠⠀⢀⣀⢸⣧⣈⡈⠁
 ⠀⣧⣤⡈⠁⠿⠿⠯⠭⠭⠭⠽⠽⠯⠽⠼⣯⣯⣿⠀
 ⣠⣏⠛⢁⣾⣄⣀⣀⣀⣀⣀⠀⣀⣀⣀⣀⣻⣷⠜⠀
-⠿⠛⢿⣿⣿⠿⣿⠿⠿⣭⡼⠶⠿⠿⣻⣿⣽⡟⠀⠀
-⠀⢠⣾⣯⣽⣿⣿⣿⣿⡿⣷⠽⠤⣟⠛⠟⠻⡇⠀⠀
-⠀⠈⠛⠛⢿⣿⣿⣿⣿⣿⣿⣤⡈⢿⣿⠀⠀⠃⠀⠀
-⠀⠀⠀⠀⠈⡿⠿⠟⠿⠿⠟⠩⠇⠼⠟⠿⠿⠁⠀⠀
+⠿⠛⢿⣿⣿⠿⣿⠿⠿⣭⡼⠶⠿⠿⣻⣿⣽
 '''
 
 CONFIG_FILE = "hotkeys.json"
+REPLACER_FILE = "replacer.txt"
 
-def clean_highlighted(text: str) -> str:
-    match = re.match(r"^\s*\[\[(.+?)\]\]\s*$", text)
-    return match.group(1) if match else text
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            hotkeys = data.get("hotkeys", {})
+            settings = data.get("settings", {"typewriter": True})
+            return hotkeys, settings
+    return {}, {"typewriter": True}
+
+def save_config(hotkeys, settings):
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump({"hotkeys": hotkeys, "settings": settings}, f, indent=2)
+
+if not os.path.exists(CONFIG_FILE):
+    hotkeys = {"F2": "{{item name|WORD}}", "F3": "{{item link|WORD}}"}
+    settings = {"typewriter": True}
+    save_config(hotkeys, settings)
+else:
+    hotkeys, settings = load_config()
+
+def handle_replacetext(highlighted):
+    if not os.path.exists(REPLACER_FILE):
+        with open(REPLACER_FILE, "w", encoding="utf-8") as f:
+            f.write("[[WORD]]=[[replacement]]\n")
+    with open(REPLACER_FILE, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    replacer_dict = {}
+    for line in lines:
+        if "=" in line:
+            key, val = line.strip().split("=", 1)
+            replacer_dict[key.strip()] = val.strip()
+    if highlighted in replacer_dict and replacer_dict[highlighted]:
+        pyperclip.copy(replacer_dict[highlighted])
+        pyautogui.hotkey("ctrl", "v")
+    else:
+        # Append empty replacement if not found
+        with open(REPLACER_FILE, "a", encoding="utf-8") as f:
+            f.write(f"{highlighted}=\n")
+        typewriter(f"{highlighted} not found in replacer.txt, added for future replacement.")
 
 def replace_with(template: str, strip_brackets=False):
     try:
@@ -74,32 +108,28 @@ def replace_with(template: str, strip_brackets=False):
         if not highlighted:
             return
         if strip_brackets:
-            highlighted = clean_highlighted(highlighted)
-        replacement = template.replace("WORD", highlighted)
-        pyperclip.copy(replacement)
-        pyautogui.hotkey("ctrl", "v")
+            match = re.match(r"^\[\[(.+?)\]\]$", highlighted)
+            if match:
+                highlighted = match.group(1)
+        if template == "REPLACETEXT":
+            handle_replacetext(highlighted)
+        else:
+            replacement = template.replace("WORD", highlighted)
+            pyperclip.copy(replacement)
+            pyautogui.hotkey("ctrl", "v")
     except Exception:
         pass
 
 def typewriter(text, delay=0.01):
-    for char in text:
-        sys.stdout.write(char)
+    if settings.get("typewriter", True):
+        for char in text:
+            sys.stdout.write(char)
+            sys.stdout.flush()
+            time.sleep(delay)
+        sys.stdout.write("\n")
         sys.stdout.flush()
-        time.sleep(delay)
-    sys.stdout.write("\n")
-    sys.stdout.flush()
-
-def load_hotkeys():
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {"F2": "{{item name|WORD}}", "F3": "{{item link|WORD}}"}
-
-def save_hotkeys(hotkeys):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(hotkeys, f, indent=2)
-
-hotkeys = load_hotkeys()
+    else:
+        print(text)
 
 def apply_hotkeys():
     try:
@@ -119,35 +149,45 @@ def show_settings():
     typewriter(settings_dot_art, delay=0.001)
     typewriter("\n--- Settings Menu ---")
     list_hotkeys()
-    typewriter("\nEnter hotkey to change (F1-F12), type 'REMOVE' to delete a hotkey, or 'exit' to return to main menu.")
+    typewriter("\nEnter hotkey (F1-F12), REMOVE to delete, REPLACETEXT, TEXTEFFECT, or exit.")
     while True:
         try:
             choice = input("> ").strip().upper()
             if choice == "EXIT":
-                save_hotkeys(hotkeys)
+                save_config(hotkeys, settings)
                 typewriter("Returning to main menu...\n")
                 apply_hotkeys()
                 return
+            if choice == "TEXTEFFECT":
+                val = input("Type True or False to toggle typewriter effect: ").strip().lower()
+                settings["typewriter"] = val in ["true", "1", "yes"]
+                typewriter(f"Typewriter effect set to {settings['typewriter']}")
+                save_config(hotkeys, settings)
+                continue
             if choice in [f"F{i}" for i in range(1, 13)]:
-                new_template = input(f"Enter new template for {choice} (use WORD for highlighted text, REMOVE to delete): ").strip()
+                new_template = input(f"Enter new template for {choice} (WORD required, REMOVE, REPLACETEXT): ").strip()
                 if new_template.upper() == "REMOVE":
                     if choice in hotkeys:
                         del hotkeys[choice]
-                        typewriter(f"{choice} removed. Shortcut deleted.")
+                        typewriter(f"{choice} removed.")
                     else:
                         typewriter(f"{choice} is not set.")
-                    save_hotkeys(hotkeys)
+                    save_config(hotkeys, settings)
                     apply_hotkeys()
+                    continue
+                if new_template.upper() == "REPLACETEXT":
+                    hotkeys[choice] = "REPLACETEXT"
+                    save_config(hotkeys, settings)
                     continue
                 if "WORD" not in new_template:
                     typewriter("Template must contain 'WORD'. Try again.")
                     continue
                 hotkeys[choice] = new_template
-                save_hotkeys(hotkeys)
+                save_config(hotkeys, settings)
                 typewriter(f"{choice} updated to: {new_template}")
                 apply_hotkeys()
             else:
-                typewriter("Invalid option. Use F1-F12, 'REMOVE', or 'exit'.")
+                typewriter("Invalid option. Use F1-F12, REMOVE, REPLACETEXT, TEXTEFFECT, or exit.")
         except Exception:
             traceback.print_exc()
             typewriter("Error occurred, returning to main menu...")
@@ -172,17 +212,13 @@ def main_loop():
             typewriter("Error occurred, continuing loop...")
 
 def main():
+    typewriter(f"VERSION: {VERSION}\n", delay=0.02)
     typewriter(dot_art, delay=0.001)
-    typewriter("Welcome to Automatic Replacement & Clipboard Hotkeys for Item Macros, Efficient Document Entry Software", delay=0.01)
-    typewriter("aka A.R.C.H.I.M.E.D.E.S", delay=0.02)
+    typewriter("Welcome to Automatic Replacement & Clipboard Hotkeys for Item Macros, Efficient Document Entry Software", delay=0.03)
+    typewriter("aka A.R.C.H.I.M.E.D.E.S", delay=0.05)
     list_hotkeys()
     apply_hotkeys()
     main_loop()
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception:
-        traceback.print_exc()
-        typewriter("Fatal error occurred. Press Enter to exit.")
-        input()
+    main()

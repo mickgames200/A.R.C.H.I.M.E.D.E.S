@@ -20,4 +20,9 @@
 ⠻⠛⠛⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⠿⣿⣶⣶⢬⣽⣿⣿⡿⣷⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢟⢿⣟⡟⢿⣷⣽⣾⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠫⠽⠇⠀⠈⠉⠙⠁
+
+
+
+
+
 A.R.C.H.I.M.E.D.E.S aka Automatic Replacement & Clipboard Hotkeys for Item Macros, Efficient Document Entry Software is a software i made for translating and editing the tf2 wiki wich aims to make all the item links and [] way easier to use with an easy highlight it and press the button and boom! its done i'll add more features in future updates!

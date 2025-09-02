@@ -1,0 +1,188 @@
+import subprocess
+import sys
+import time
+import re
+import json
+import os
+import traceback
+
+try:
+    import pyautogui
+    import pyperclip
+    import keyboard
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "pyautogui", "pyperclip", "keyboard"])
+    import pyautogui
+    import pyperclip
+    import keyboard
+
+
+dot_art = r'''
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⣴⡶⠶⠶⢶⣦⣤⡀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⣴⡾⠟⠋⠁⠀⠀⠙⢯⣽⣷⣮⡷⡀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣤⣶⠾⠟⠛⠉⠀⠀⠀⠀⠀⣶⣷⣦⠀⢀⡉⠉⢹⣿⡀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣴⣿⠟⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠙⠋⠀⠐⣯⢩⣅⢻⣧
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣾⠟⠉⠀⠀⠀⠀⠀⣀⡀⠀⠀⠀⠀⠀⠀⠀⢀⡤⢴⣖⣶⣾⡿⢟⣿
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⡿⠏⠁⠀⠀⠀⠀⣄⠀⠀⠟⠀⠀⠀⠀⠀⠀⠀⠰⣯⠿⠋⠁⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡰⣿⠟⠀⠀⠀⠀⠀⠀⠀⠘⠁⠀⠀⠀⠀⠀⠀⠀⠀⢠⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣞⡟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡄⠀⡀⠀⢀⡄⠀⠀⠚⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⠏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠠⣀⣀⣿⣿⣿⣶⣿⣧⣤⡞⠀⣼⣿⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⣿⣿⣿⣿⣿⣿⣿⡏⠀⣠⣞⠏⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⡿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣼⡽⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⢛⣿⣿⣿⣿⣿⣿⣿⡿⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⡽⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⣿⣿⣿⣿⣿⣿⡟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣺⠟⠀⠀⠀⠀⠀⠂⠀⠀⠀⠀⠀⠀⣤⣤⡶⠀⣿⣿⣿⣿⣿⣿⢟⡷⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⡟⠁⠀⠀⠀⠀⠐⠀⠀⠀⠀⠀⠀⠀⠀⠺⣯⣠⣼⣿⣿⡿⣻⡯⠟⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⢀⣤⣿⠟⠉⠀⢀⣤⠀⠀⣀⢤⣾⠶⣶⣦⡀⠀⠀⠀⢈⣿⣿⣯⣿⣟⣉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⣀⣴⣾⠗⣋⣡⣴⣾⣿⣛⣥⣶⣿⠗⠋⠁⠀⠀⠻⣝⣆⢰⣾⣿⣏⠛⠛⢻⣗⣚⣿⣷⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⣴⣺⣿⣻⣭⣖⣾⠟⠛⠻⠿⠿⠛⠋⠁⠀⠀⠀⠀⠀⠀⠀⠈⣷⣷⡜⠻⠿⢷⣿⡷⠾⣽⣾⣳⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠻⠛⠛⠉⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠸⠿⣿⣶⣶⢬⣽⣿⣿⡿⣷⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢟⢿⣟⡟⢿⣷⣽⣾⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠫⠽⠇⠀⠈⠉⠙⠁
+'''
+
+
+settings_dot_art = r'''
+⠀⠀⠀⠀⠀⠀⢴⣶⣶⣶⣶⣶⣲⠒⢲⡞⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⣤⣿⣷⣟⣿⣿⣿⣿⣿⠿⠧⣄⠀⠀⠀
+⠀⠀⣀⡀⠀⣿⡇⠀⣘⢦⣤⣼⠤⡤⠀⣿⣧⠀⠀⠀
+⠀⡎⢁⠜⢳⣿⡿⠿⠿⠿⠿⠿⠿⠿⠶⣿⣎⢀⠀⠀
+⠀⠣⣀⣠⡾⣿⡇⢀⠴⡉⠀⠈⠱⢆⠀⣿⡟⣿⡇⠀
+⠀⠀⣼⣯⠀⣿⣇⣄⠀⠘⠄⡔⠁⢀⣇⣿⡇⣿⡽⠀
+⠀⡀⠀⠈⢢⣿⣿⣭⣿⣿⣽⣿⣿⣶⠿⡿⢧⣼⠃⠀
+⠀⠧⠤⠤⣿⣿⣿⡿⠿⢿⣿⣿⠿⣿⣿⢿⣿⣯⣴⡲
+⠀⡄⠀⠀⢛⣿⠻⠇⢀⠀⠀⠠⠀⢀⣀⢸⣧⣈⡈⠁
+⠀⣧⣤⡈⠁⠿⠿⠯⠭⠭⠭⠽⠽⠯⠽⠼⣯⣯⣿⠀
+⣠⣏⠛⢁⣾⣄⣀⣀⣀⣀⣀⠀⣀⣀⣀⣀⣻⣷⠜⠀
+⠿⠛⢿⣿⣿⠿⣿⠿⠿⣭⡼⠶⠿⠿⣻⣿⣽⡟⠀⠀
+⠀⢠⣾⣯⣽⣿⣿⣿⣿⡿⣷⠽⠤⣟⠛⠟⠻⡇⠀⠀
+⠀⠈⠛⠛⢿⣿⣿⣿⣿⣿⣿⣤⡈⢿⣿⠀⠀⠃⠀⠀
+⠀⠀⠀⠀⠈⡿⠿⠟⠿⠿⠟⠩⠇⠼⠟⠿⠿⠁⠀⠀
+'''
+
+CONFIG_FILE = "hotkeys.json"
+
+def clean_highlighted(text: str) -> str:
+    match = re.match(r"^\s*\[\[(.+?)\]\]\s*$", text)
+    return match.group(1) if match else text
+
+def replace_with(template: str, strip_brackets=False):
+    try:
+        pyautogui.hotkey("ctrl", "c")
+        time.sleep(0.1)
+        highlighted = pyperclip.paste().strip()
+        if not highlighted:
+            return
+        if strip_brackets:
+            highlighted = clean_highlighted(highlighted)
+        replacement = template.replace("WORD", highlighted)
+        pyperclip.copy(replacement)
+        pyautogui.hotkey("ctrl", "v")
+    except Exception:
+        pass
+
+def typewriter(text, delay=0.01):
+    for char in text:
+        sys.stdout.write(char)
+        sys.stdout.flush()
+        time.sleep(delay)
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+def load_hotkeys():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"F2": "{{item name|WORD}}", "F3": "{{item link|WORD}}"}
+
+def save_hotkeys(hotkeys):
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(hotkeys, f, indent=2)
+
+hotkeys = load_hotkeys()
+
+def apply_hotkeys():
+    try:
+        keyboard.unhook_all()
+        for key, template in hotkeys.items():
+            keyboard.add_hotkey(key, lambda t=template: replace_with(t))
+        keyboard.add_hotkey('esc', lambda: sys.exit())
+    except Exception:
+        pass
+
+def list_hotkeys():
+    typewriter("\nCurrent Hotkeys:")
+    for key in sorted(hotkeys.keys(), key=lambda x: int(x[1:])):
+        typewriter(f"{key}: {hotkeys[key]}")
+
+def show_settings():
+    typewriter(settings_dot_art, delay=0.001)
+    typewriter("\n--- Settings Menu ---")
+    list_hotkeys()
+    typewriter("\nEnter hotkey to change (F1-F12), type 'REMOVE' to delete a hotkey, or 'exit' to return to main menu.")
+    while True:
+        try:
+            choice = input("> ").strip().upper()
+            if choice == "EXIT":
+                save_hotkeys(hotkeys)
+                typewriter("Returning to main menu...\n")
+                apply_hotkeys()
+                return
+            if choice in [f"F{i}" for i in range(1, 13)]:
+                new_template = input(f"Enter new template for {choice} (use WORD for highlighted text, REMOVE to delete): ").strip()
+                if new_template.upper() == "REMOVE":
+                    if choice in hotkeys:
+                        del hotkeys[choice]
+                        typewriter(f"{choice} removed. Shortcut deleted.")
+                    else:
+                        typewriter(f"{choice} is not set.")
+                    save_hotkeys(hotkeys)
+                    apply_hotkeys()
+                    continue
+                if "WORD" not in new_template:
+                    typewriter("Template must contain 'WORD'. Try again.")
+                    continue
+                hotkeys[choice] = new_template
+                save_hotkeys(hotkeys)
+                typewriter(f"{choice} updated to: {new_template}")
+                apply_hotkeys()
+            else:
+                typewriter("Invalid option. Use F1-F12, 'REMOVE', or 'exit'.")
+        except Exception:
+            traceback.print_exc()
+            typewriter("Error occurred, returning to main menu...")
+            return
+
+def main_loop():
+    typewriter("\nType 'settings' to configure hotkeys or 'exit' to quit.")
+    while True:
+        try:
+            cmd = input("> ").strip().lower()
+            if cmd == "settings":
+                show_settings()
+                list_hotkeys()
+            elif cmd in ["exit", "quit"]:
+                typewriter("Exiting... Press Enter to close.")
+                input()
+                sys.exit()
+            else:
+                typewriter("Unknown command. Type 'settings' or 'exit'.")
+        except Exception:
+            traceback.print_exc()
+            typewriter("Error occurred, continuing loop...")
+
+def main():
+    typewriter(dot_art, delay=0.001)
+    typewriter("Welcome to Automatic Replacement & Clipboard Hotkeys for Item Macros, Efficient Document Entry Software", delay=0.01)
+    typewriter("aka A.R.C.H.I.M.E.D.E.S", delay=0.02)
+    list_hotkeys()
+    apply_hotkeys()
+    main_loop()
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception:
+        traceback.print_exc()
+        typewriter("Fatal error occurred. Press Enter to exit.")
+        input()
